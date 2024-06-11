@@ -15,15 +15,11 @@ const (
 
 func ReadTT(path string) (courses [][]string, sections [][]string) {
 	exc, err := excelize.OpenFile(path)
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkError(err)
 	defer exc.Close()
 
 	rows, err := exc.GetRows(exc.GetSheetName(0))
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkError(err)
 
 	var curCourse string
 	for _, row := range rows {
@@ -36,4 +32,10 @@ func ReadTT(path string) (courses [][]string, sections [][]string) {
 		}
 	}
 	return
+}
+
+func checkError(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
 }
