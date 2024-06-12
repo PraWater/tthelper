@@ -21,6 +21,11 @@ type Course struct {
 	Credits                                int
 }
 
+type Section struct {
+	Subject_code, Course_code, Section_slot string
+	Section_type, Section_no                int
+}
+
 func (store *DBStore) InitDB(db *sql.DB) {
 	store.db = db
 
@@ -42,12 +47,31 @@ func (store *DBStore) InitDB(db *sql.DB) {
         FOREIGN KEY (subject_code) REFERENCES subjects(subject_code)
     )`)
 	checkError(err)
+
+	_, err = store.db.Exec(`CREATE TABLE IF NOT EXISTS sections (
+        subject_code TEXT NOT NULL,
+        course_code TEXT NOT NULL,
+        section_type INTEGER NOT NULL,
+        section_no INTEGER NOT NULL,
+        section_slot TEXT,
+        PRIMARY KEY (subject_code, course_code, section_type, section_no),
+        FOREIGN KEY (subject_code, course_code) REFERENCES courses(subject_code, course_code)
+    )`)
+	checkError(err)
 }
 
 func (store *DBStore) InsertCourses(courses [][]string) {
 	for _, course := range courses {
 		c := ParseCourse(course)
 		_, err := store.db.Exec("INSERT INTO courses (subject_code, course_code, course_name, credits) VALUES (?, ?, ?, ?)", c.Subject_code, c.Course_code, c.Course_name, c.Credits)
+		checkError(err)
+	}
+}
+
+func (store *DBStore) InsertSections(sections [][]string) {
+	for _, section := range sections {
+		s := ParseSection(section)
+		_, err := store.db.Exec("INSERT INTO sections (subject_code, course_code, section_type, section_no, section_slot) VALUES (?, ?, ?, ?, ?)", s.Subject_code, s.Course_code, s.Section_type, s.Section_no, s.Section_slot)
 		checkError(err)
 	}
 }
@@ -59,6 +83,20 @@ func ParseCourse(course []string) Course {
 	checkError(err)
 
 	return Course{Subject_code: codes[0], Course_code: codes[1], Course_name: courseName, Credits: credits}
+}
+
+func ParseSection(section []string) Section {
+	codes := strings.Split(section[0], " ")
+	secType := 0
+	if section[1][0] == 'T' {
+		secType = 1
+	}
+	if section[1][0] == 'P' {
+		secType = 2
+	}
+	secNo := int(section[1][1] - '0')
+
+	return Section{Subject_code: codes[0], Course_code: codes[1], Section_type: secType, Section_no: secNo, Section_slot: section[2]}
 }
 
 func checkError(err error) {
