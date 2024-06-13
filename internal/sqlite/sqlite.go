@@ -85,8 +85,12 @@ func (store *DBStore) InsertCourses(courses [][]string) error {
 
 func (store *DBStore) InsertSections(sections [][]string) error {
 	for _, section := range sections {
-		s := ParseSection(section)
-		_, err := store.db.Exec("INSERT INTO sections (subject_code, course_code, section_type, section_no, section_slot) VALUES (?, ?, ?, ?, ?)", s.Subject_code, s.Course_code, s.Section_type, s.Section_no, s.Section_slot)
+		s, err := ParseSection(section)
+		if err != nil {
+			return err
+		}
+
+		_, err = store.db.Exec("INSERT INTO sections (subject_code, course_code, section_type, section_no, section_slot) VALUES (?, ?, ?, ?, ?)", s.Subject_code, s.Course_code, s.Section_type, s.Section_no, s.Section_slot)
 		if err != nil {
 			return err
 		}
@@ -105,7 +109,7 @@ func ParseCourse(course []string) (Course, error) {
 	return Course{Subject_code: codes[0], Course_code: codes[1], Course_name: courseName, Credits: credits}, nil
 }
 
-func ParseSection(section []string) Section {
+func ParseSection(section []string) (Section, error) {
 	codes := strings.Split(section[0], " ")
 	secType := 0
 	if section[1][0] == 'T' {
@@ -114,7 +118,10 @@ func ParseSection(section []string) Section {
 	if section[1][0] == 'P' {
 		secType = 2
 	}
-	secNo := int(section[1][1] - '0')
+	secNo, err := strconv.Atoi(section[1][1:])
+	if err != nil {
+		return Section{}, err
+	}
 
-	return Section{Subject_code: codes[0], Course_code: codes[1], Section_type: secType, Section_no: secNo, Section_slot: section[2]}
+	return Section{Subject_code: codes[0], Course_code: codes[1], Section_type: secType, Section_no: secNo, Section_slot: section[2]}, nil
 }

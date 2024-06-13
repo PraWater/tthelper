@@ -86,10 +86,11 @@ func TestParseCourse(t *testing.T) {
 }
 
 func TestParseSection(t *testing.T) {
-	section := []string{"BIO F215", "L1", "M W F  5"}
-	got := sqlite.ParseSection(section)
-	want := sqlite.Section{Subject_code: "BIO", Course_code: "F215", Section_type: 0, Section_no: 1, Section_slot: "M W F  5"}
+	section := []string{"BIO F215", "L10", "M W F  5"}
+	got, err := sqlite.ParseSection(section)
+	want := sqlite.Section{Subject_code: "BIO", Course_code: "F215", Section_type: 0, Section_no: 10, Section_slot: "M W F  5"}
 
+	assertNoError(t, err)
 	assertEqualSection(t, got, want)
 }
 
