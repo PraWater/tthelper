@@ -2,9 +2,10 @@ package sqlite
 
 import (
 	"database/sql"
-	_ "modernc.org/sqlite"
 	"strconv"
 	"strings"
+
+	_ "modernc.org/sqlite"
 )
 
 type DBStore struct {
@@ -124,4 +125,10 @@ func ParseSection(section []string) (Section, error) {
 	}
 
 	return Section{Subject_code: codes[0], Course_code: codes[1], Section_type: secType, Section_no: secNo, Section_slot: section[2]}, nil
+}
+
+func (store *DBStore) FindSlot(section Section) (slot string, err error) {
+	row := store.db.QueryRow("SELECT section_slot FROM sections WHERE subject_code = ? AND course_code = ? AND section_no = ? AND section_type = ?", section.Subject_code, section.Course_code, section.Section_no, section.Section_type)
+	err = row.Scan(&slot)
+	return
 }

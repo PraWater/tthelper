@@ -94,6 +94,17 @@ func TestParseSection(t *testing.T) {
 	assertEqualSection(t, got, want)
 }
 
+func TestFindSlot(t *testing.T) {
+	section := sqlite.Section{Subject_code: "BIO", Course_code: "F215", Section_type: 0, Section_no: 1}
+	got, err := store.FindSlot(section)
+	want := "M W F  5"
+
+	assertNoError(t, err)
+	if got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
 func assertNoError(t testing.TB, err error) {
 	t.Helper()
 	if err != nil {
