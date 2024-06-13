@@ -28,7 +28,10 @@ func run(m *testing.M) (code int, err error) {
 	}
 
 	store = sqlite.DBStore{}
-	store.InitDB(db)
+	err = store.InitDB(db)
+	if err != nil {
+		return -1, fmt.Errorf("Error initialising database: %w", err)
+	}
 
 	defer func() {
 		for _, t := range []string{"sections", "courses", "subjects"} {
@@ -43,41 +46,42 @@ func run(m *testing.M) (code int, err error) {
 
 func TestInsertCourses(t *testing.T) {
 	courses := [][]string{{"BIO F215", "BIOPHYSICS", "3"}, {"BIO F231", "BIOLOGY PROJECT LAB", "3"}}
-	store.InsertCourses(courses)
+	err := store.InsertCourses(courses)
+	assertNoError(t, err)
 
 	want := sqlite.Course{Subject_code: "BIO", Course_code: "F215", Course_name: "BIOPHYSICS", Credits: 3}
 
 	row := db.QueryRow("SELECT * FROM courses WHERE course_code = ?", want.Course_code)
 
 	got := sqlite.Course{}
-	err := row.Scan(&got.Subject_code, &got.Course_code, &got.Course_name, &got.Credits)
+	err = row.Scan(&got.Subject_code, &got.Course_code, &got.Course_name, &got.Credits)
 
 	assertNoError(t, err)
-
 	assertEqualCourse(t, got, want)
 }
 
 func TestInsertSections(t *testing.T) {
 	sections := [][]string{{"BIO F215", "L1", "M W F  5"}, {"BIO F215", "T1", "Th  1"}, {"BIO F231", "L1", "S  1"}, {"BIO F231", "P1", "T  4 5  S  7 8"}}
-	store.InsertSections(sections)
+	err := store.InsertSections(sections)
+	assertNoError(t, err)
 
 	want := sqlite.Section{Subject_code: "BIO", Course_code: "F215", Section_type: 0, Section_no: 1, Section_slot: "M W F  5"}
 
 	row := db.QueryRow("SELECT * FROM sections WHERE course_code = ? AND section_no = ? AND section_type = ?", want.Course_code, want.Section_no, want.Section_type)
 
 	got := sqlite.Section{}
-	err := row.Scan(&got.Subject_code, &got.Course_code, &got.Section_type, &got.Section_no, &got.Section_slot)
+	err = row.Scan(&got.Subject_code, &got.Course_code, &got.Section_type, &got.Section_no, &got.Section_slot)
 
 	assertNoError(t, err)
-
 	assertEqualSection(t, got, want)
 }
 
 func TestParseCourse(t *testing.T) {
 	course := []string{"BIO F215", "BIOPHYSICS", "3"}
-	got := sqlite.ParseCourse(course)
+	got, err := sqlite.ParseCourse(course)
 	want := sqlite.Course{Subject_code: "BIO", Course_code: "F215", Course_name: "BIOPHYSICS", Credits: 3}
 
+	assertNoError(t, err)
 	assertEqualCourse(t, got, want)
 }
 
@@ -97,12 +101,14 @@ func assertNoError(t testing.TB, err error) {
 }
 
 func assertEqualCourse(t testing.TB, got, want sqlite.Course) {
+	t.Helper()
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }
 
 func assertEqualSection(t testing.TB, got, want sqlite.Section) {
+	t.Helper()
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %v, want %v", got, want)
 	}
