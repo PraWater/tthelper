@@ -124,11 +124,51 @@ func ParseSection(section []string) (Section, error) {
 		return Section{}, err
 	}
 
-	return Section{Subject_code: codes[0], Course_code: codes[1], Section_type: secType, Section_no: secNo, Section_slot: section[2]}, nil
+  if len(section) == 3 {
+    //Section slot in included
+    return Section{Subject_code: codes[0], Course_code: codes[1], Section_type: secType, Section_no: secNo, Section_slot: section[2]}, nil
+  }
+	return Section{Subject_code: codes[0], Course_code: codes[1], Section_type: secType, Section_no: secNo}, nil
 }
 
-func (store *DBStore) FindSlot(section Section) (slot string, err error) {
-	row := store.db.QueryRow("SELECT section_slot FROM sections WHERE subject_code = ? AND course_code = ? AND section_no = ? AND section_type = ?", section.Subject_code, section.Course_code, section.Section_no, section.Section_type)
+func (store *DBStore) FindSlot(section []string) (slot string, err error) {
+  sec, err := ParseSection(section)
+  if err != nil {
+    return
+  }
+
+	row := store.db.QueryRow("SELECT section_slot FROM sections WHERE subject_code = ? AND course_code = ? AND section_no = ? AND section_type = ?", sec.Subject_code, sec.Course_code, sec.Section_no, sec.Section_type)
 	err = row.Scan(&slot)
+	return
+}
+
+func (store *DBStore) FindSections(course Course) (sections []Section, err error) {
+	rows, err := store.db.Query("SELECT * FROM sections WHERE subject_code = ? AND course_code = ?", course.Subject_code, course.Course_code)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	err = rows.Err()
+	if err != nil {
+		return
+	}
+
+	for rows.Next() {
+		s := Section{}
+		err = rows.Scan(&s.Subject_code, &s.Course_code, &s.Section_type, &s.Section_no, &s.Section_slot)
+
+		if err != nil {
+			return
+		}
+
+    sections = append(sections, s)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return
+	}
+
 	return
 }

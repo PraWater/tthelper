@@ -95,13 +95,24 @@ func TestParseSection(t *testing.T) {
 }
 
 func TestFindSlot(t *testing.T) {
-	section := sqlite.Section{Subject_code: "BIO", Course_code: "F215", Section_type: 0, Section_no: 1}
-	got, err := store.FindSlot(section)
+	section := []string{"BIO F215", "L1"}
+  got, err := store.FindSlot(section)
 	want := "M W F  5"
 
 	assertNoError(t, err)
 	if got != want {
 		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
+func TestFindSections(t *testing.T) {
+	course := sqlite.Course{Subject_code: "BIO", Course_code: "F215", Course_name: "BIOPHYSICS", Credits: 3}
+	got, err := store.FindSections(course)
+	want := []sqlite.Section{{Subject_code: "BIO", Course_code: "F215", Section_type: 0, Section_no: 1, Section_slot: "M W F  5"}, {Subject_code: "BIO", Course_code: "F215", Section_type: 1, Section_no: 1, Section_slot: "Th  1"}}
+
+	assertNoError(t, err)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v, want %v", got, want)
 	}
 }
 
