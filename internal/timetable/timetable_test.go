@@ -1,14 +1,21 @@
-package input_test
+package timetable_test
 
 import (
+	"log"
+	"os"
 	"reflect"
 	"testing"
 
-	"github.com/PraWater/tthelper/internal/input"
+	"github.com/PraWater/tthelper/internal/timetable"
 )
 
 func TestInput(t *testing.T) {
-	got, err := input.ReadFile("input_test.txt")
+  file, err := os.Open("timetable_test.txt")
+  if err != nil {
+    log.Fatal(err)
+  }
+  defer file.Close()
+	got, err := timetable.ReadFile(file)
 	want := [][]string{{"BIO F215", "L1"}, {"BIO F215", "T1"}, {"BIO F231", "L1"}}
 
 	assertNoError(t, err)
@@ -51,7 +58,7 @@ func TestParseSlot(t *testing.T) {
 	}
 	for _, test := range cases {
 		t.Run(test.Name, func(t *testing.T) {
-      got, err := input.ParseSlot(test.Input)
+      got, err := timetable.ParseSlot(test.Input)
 
       assertNoError(t, err)
 			if !reflect.DeepEqual(got, test.Output) {
@@ -62,7 +69,7 @@ func TestParseSlot(t *testing.T) {
 
   t.Run("Unexpected day character", func(t *testing.T) {
     slot := "P  7"
-    _, err := input.ParseSlot(slot)
+    _, err := timetable.ParseSlot(slot)
 
     if err == nil {
       t.Errorf("Expected error when giving %q as input\n", slot)

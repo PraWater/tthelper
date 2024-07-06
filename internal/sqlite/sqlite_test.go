@@ -28,7 +28,8 @@ func run(m *testing.M) (code int, err error) {
 	}
 
 	store = sqlite.DBStore{}
-	err = store.InitDB(db)
+  store.InsertDB(db)
+	err = store.InitDB()
 	if err != nil {
 		return -1, fmt.Errorf("Error initialising database: %w", err)
 	}

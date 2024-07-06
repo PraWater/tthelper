@@ -1,4 +1,4 @@
-package input
+package timetable
 
 import (
 	"bufio"
@@ -8,13 +8,7 @@ import (
 	"strings"
 )
 
-func ReadFile(filename string) (sections [][]string, err error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
+func ReadFile(file *os.File) (sections [][]string, err error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
