@@ -28,7 +28,7 @@ func run(m *testing.M) (code int, err error) {
 	}
 
 	store = sqlite.DBStore{}
-  store.InsertDB(db)
+	store.InsertDB(db)
 	err = store.InitDB()
 	if err != nil {
 		return -1, fmt.Errorf("Error initialising database: %w", err)
@@ -96,8 +96,8 @@ func TestParseSection(t *testing.T) {
 }
 
 func TestFindSlot(t *testing.T) {
-	section := []string{"BIO F215", "L1"}
-  got, err := store.FindSlot(section)
+	section := sqlite.Section{Subject_code: "BIO", Course_code: "F215", Section_type: 0, Section_no: 1}
+	got, err := store.FindSlot(section)
 	want := "M W F  5"
 
 	assertNoError(t, err)
@@ -108,8 +108,8 @@ func TestFindSlot(t *testing.T) {
 
 func TestFindSections(t *testing.T) {
 	course := sqlite.Course{Subject_code: "BIO", Course_code: "F215", Course_name: "BIOPHYSICS", Credits: 3}
-	got, err := store.FindSections(course)
-	want := []sqlite.Section{{Subject_code: "BIO", Course_code: "F215", Section_type: 0, Section_no: 1, Section_slot: "M W F  5"}, {Subject_code: "BIO", Course_code: "F215", Section_type: 1, Section_no: 1, Section_slot: "Th  1"}}
+	got, err := store.FindSections(course, 0)
+	want := []sqlite.Section{{Subject_code: "BIO", Course_code: "F215", Section_type: 0, Section_no: 1, Section_slot: "M W F  5"}}
 
 	assertNoError(t, err)
 	if !reflect.DeepEqual(got, want) {

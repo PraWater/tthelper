@@ -156,19 +156,14 @@ func ParseSection(section []string) (Section, error) {
 	return Section{Subject_code: codes[0], Course_code: codes[1], Section_type: secType, Section_no: secNo}, nil
 }
 
-func (store *DBStore) FindSlot(section []string) (slot string, err error) {
-	sec, err := ParseSection(section)
-	if err != nil {
-		return
-	}
-
-	row := store.db.QueryRow("SELECT section_slot FROM sections WHERE subject_code = ? AND course_code = ? AND section_no = ? AND section_type = ?", sec.Subject_code, sec.Course_code, sec.Section_no, sec.Section_type)
+func (store *DBStore) FindSlot(section Section) (slot string, err error) {
+	row := store.db.QueryRow("SELECT section_slot FROM sections WHERE subject_code = ? AND course_code = ? AND section_no = ? AND section_type = ?", section.Subject_code, section.Course_code, section.Section_no, section.Section_type)
 	err = row.Scan(&slot)
 	return
 }
 
-func (store *DBStore) FindSections(course Course) (sections []Section, err error) {
-	rows, err := store.db.Query("SELECT * FROM sections WHERE subject_code = ? AND course_code = ?", course.Subject_code, course.Course_code)
+func (store *DBStore) FindSections(course Course, secType int) (sections []Section, err error) {
+	rows, err := store.db.Query("SELECT * FROM sections WHERE subject_code = ? AND course_code = ? AND section_type = ?", course.Subject_code, course.Course_code, secType)
 	if err != nil {
 		return
 	}
@@ -188,6 +183,37 @@ func (store *DBStore) FindSections(course Course) (sections []Section, err error
 		}
 
 		sections = append(sections, s)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (store *DBStore) AllCourses() (courses []Course, err error) {
+	rows, err := store.db.Query("SELECT * FROM courses")
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	err = rows.Err()
+	if err != nil {
+		return
+	}
+
+	for rows.Next() {
+		c := Course{}
+		err = rows.Scan(&c.Subject_code, &c.Course_code, &c.Course_name, &c.Credits)
+
+		if err != nil {
+			return
+		}
+
+		courses = append(courses, c)
 	}
 
 	err = rows.Err()
