@@ -88,36 +88,71 @@ func (store *DBStore) InitDB() error {
 }
 
 func (store *DBStore) InsertCourses(courses [][]string) error {
-	for _, course := range courses {
-		c, err := ParseCourse(course)
-		if err != nil {
-			continue
-		}
+    type parseResult struct {
+        course Course
+        err    error
+    }
 
-		_, err = store.db.Exec("INSERT INTO courses (subject_code, course_code, course_name, credits) VALUES (?, ?, ?, ?)", c.Subject_code, c.Course_code, c.Course_name, c.Credits)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+    results := make(chan parseResult, len(courses))
+    sem := make(chan struct{}, 20)
+
+    for _, course := range courses {
+        sem <- struct{}{}
+        go func(course []string) {
+            defer func() { <-sem }()
+            c, err := ParseCourse(course)
+            results <- parseResult{c, err}
+        }(course)
+    }
+
+    for range courses {
+        result := <-results
+        if result.err != nil {
+            continue
+        }
+        _, err := store.db.Exec("INSERT INTO courses (subject_code, course_code, course_name, credits) VALUES (?, ?, ?, ?)", 
+            result.course.Subject_code, result.course.Course_code, result.course.Course_name, result.course.Credits)
+        if err != nil {
+            return err
+        }
+    }
+
+    return nil
 }
 
 func (store *DBStore) InsertSections(sections [][]string) error {
-	for _, section := range sections {
-		s, err := ParseSection(section)
-		if err != nil {
-			continue
-		}
+    type parseResult struct {
+        section Section
+        err     error
+        valid   bool
+    }
 
-		if s.Section_type < 0 {
-			continue
-		}
-		_, err = store.db.Exec("INSERT INTO sections (subject_code, course_code, section_type, section_no, section_slot) VALUES (?, ?, ?, ?, ?)", s.Subject_code, s.Course_code, s.Section_type, s.Section_no, s.Section_slot)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+    results := make(chan parseResult, len(sections))
+    sem := make(chan struct{}, 20)
+
+    for _, section := range sections {
+        sem <- struct{}{}
+        go func(section []string) {
+            defer func() { <-sem }()
+            s, err := ParseSection(section)
+            valid := err == nil && s.Section_type >= 0
+            results <- parseResult{s, err, valid}
+        }(section)
+    }
+
+    for range sections {
+        result := <-results
+        if !result.valid {
+            continue
+        }
+        _, err := store.db.Exec("INSERT INTO sections (subject_code, course_code, section_type, section_no, section_slot) VALUES (?, ?, ?, ?, ?)", 
+            result.section.Subject_code, result.section.Course_code, result.section.Section_type, result.section.Section_no, result.section.Section_slot)
+        if err != nil {
+            return err
+        }
+    }
+
+    return nil
 }
 
 func ParseCourse(course []string) (Course, error) {

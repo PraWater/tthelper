@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+  "sync"
 
 	"github.com/PraWater/tthelper/internal/excel"
 	"github.com/PraWater/tthelper/internal/sqlite"
@@ -83,24 +84,40 @@ func list(store sqlite.DBStore) {
 
 	courses, err := store.AllCourses()
 	logError(err)
-	for _, course := range courses {
-		fmt.Println(course)
-		lSections, err := store.FindSections(course, 0)
-		logError(err)
-    takeLec := canTakeSections(store, lSections, filledSlots)
+  var wg sync.WaitGroup
+    resultChan := make(chan sqlite.Course, len(courses))
 
-		tSections, err := store.FindSections(course, 1)
-		logError(err)
-    takeTut := canTakeSections(store, tSections, filledSlots)
+    for _, course := range courses {
+        wg.Add(1)
+        go func(course sqlite.Course) {
+            defer wg.Done()
 
-		pSections, err := store.FindSections(course, 2)
-		logError(err)
-    takePra := canTakeSections(store, pSections, filledSlots)
+            lSections, err := store.FindSections(course, 0)
+            logError(err)
+            takeLec := canTakeSections(store, lSections, filledSlots)
 
-		if takeLec && takeTut && takePra {
-			fmt.Println(course)
-		}
-	}
+            tSections, err := store.FindSections(course, 1)
+            logError(err)
+            takeTut := canTakeSections(store, tSections, filledSlots)
+
+            pSections, err := store.FindSections(course, 2)
+            logError(err)
+            takePra := canTakeSections(store, pSections, filledSlots)
+
+            if takeLec && takeTut && takePra {
+                resultChan <- course
+            }
+        }(course)
+    }
+
+    go func() {
+        wg.Wait()
+        close(resultChan)
+    }()
+
+    for course := range resultChan {
+        fmt.Println(course)
+    }
 
 }
 
