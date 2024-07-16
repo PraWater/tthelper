@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"log"
 	"os"
-  "sync"
+	"sync"
 
 	"github.com/PraWater/tthelper/internal/excel"
 	"github.com/PraWater/tthelper/internal/sqlite"
 	"github.com/PraWater/tthelper/internal/timetable"
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 const NoOfDays = 6
@@ -24,7 +27,7 @@ func main() {
 	logError(err)
 
 	if len(os.Args) < 2 {
-		list(store)
+		find(store)
 	} else {
 		switch os.Args[1] {
 		case "refresh":
@@ -51,7 +54,45 @@ func refresh(store sqlite.DBStore) {
 	logError(err)
 }
 
-func list(store sqlite.DBStore) {
+var docStyle = lipgloss.NewStyle().Margin(1, 2)
+
+type item struct {
+	title, desc string
+}
+
+func (i item) Title() string       { return i.title }
+func (i item) Description() string { return i.desc }
+func (i item) FilterValue() string { return i.title }
+
+type model struct {
+	list list.Model
+}
+
+func (m model) Init() tea.Cmd {
+	return nil
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if msg.String() == "ctrl+c" {
+			return m, tea.Quit
+		}
+	case tea.WindowSizeMsg:
+		h, v := docStyle.GetFrameSize()
+		m.list.SetSize(msg.Width-h, msg.Height-v)
+	}
+
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
+}
+
+func (m model) View() string {
+	return docStyle.Render(m.list.View())
+}
+
+func find(store sqlite.DBStore) {
 	file, err := os.Open("input_tt.txt")
 	logError(err)
 	defer file.Close()
@@ -84,47 +125,59 @@ func list(store sqlite.DBStore) {
 
 	courses, err := store.AllCourses()
 	logError(err)
-  var wg sync.WaitGroup
-    resultChan := make(chan sqlite.Course, len(courses))
+	var wg sync.WaitGroup
+	resultChan := make(chan sqlite.Course, len(courses))
 
-    for _, course := range courses {
-        wg.Add(1)
-        go func(course sqlite.Course) {
-            defer wg.Done()
+	for _, course := range courses {
+		wg.Add(1)
+		go func(course sqlite.Course) {
+			defer wg.Done()
 
-            lSections, err := store.FindSections(course, 0)
-            logError(err)
-            takeLec := canTakeSections(store, lSections, filledSlots)
+			lSections, err := store.FindSections(course, 0)
+			logError(err)
+			takeLec := canTakeSections(store, lSections, filledSlots)
 
-            tSections, err := store.FindSections(course, 1)
-            logError(err)
-            takeTut := canTakeSections(store, tSections, filledSlots)
+			tSections, err := store.FindSections(course, 1)
+			logError(err)
+			takeTut := canTakeSections(store, tSections, filledSlots)
 
-            pSections, err := store.FindSections(course, 2)
-            logError(err)
-            takePra := canTakeSections(store, pSections, filledSlots)
+			pSections, err := store.FindSections(course, 2)
+			logError(err)
+			takePra := canTakeSections(store, pSections, filledSlots)
 
-            if takeLec && takeTut && takePra {
-                resultChan <- course
-            }
-        }(course)
-    }
+			if takeLec && takeTut && takePra {
+				resultChan <- course
+			}
+		}(course)
+	}
 
-    go func() {
-        wg.Wait()
-        close(resultChan)
-    }()
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
 
-    for course := range resultChan {
-        fmt.Println(course)
-    }
+	items := []list.Item{}
+
+	for course := range resultChan {
+		items = append(items, item{title: course.Subject_code + " " + course.Course_code, desc: course.Course_name})
+	}
+
+	m := model{list: list.New(items, list.NewDefaultDelegate(), 0, 0)}
+	m.list.Title = "Available Courses"
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+
+	if _, err := p.Run(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
+	}
 
 }
 
 func canTakeSections(store sqlite.DBStore, sections []sqlite.Section, filledSlots [][]bool) bool {
-  if len(sections) == 0 {
-    return true
-  }
+	if len(sections) == 0 {
+		return true
+	}
 	for _, section := range sections {
 		s, err := store.FindSlot(section)
 		logError(err)
