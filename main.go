@@ -2,14 +2,17 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/PraWater/tthelper/internal/excel"
 	"github.com/PraWater/tthelper/internal/sqlite"
 	"github.com/PraWater/tthelper/internal/timetable"
+	"github.com/adrg/xdg"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -19,20 +22,32 @@ const NoOfDays = 6
 const NoOfSlotsPerDay = 12
 
 func main() {
-	db, err := sql.Open("sqlite", "timetable.db")
+	pathDb := filepath.Join(xdg.DataHome, "tthelper.db")
+	db, err := sql.Open("sqlite", pathDb)
 	logError(err)
 
 	store := sqlite.DBStore{}
 	store.InsertDB(db)
 	logError(err)
 
-	if len(os.Args) < 2 {
-		find(store)
-	} else {
-		switch os.Args[1] {
-		case "refresh":
-			refresh(store)
+	refreshFlag := flag.Bool("refresh", false, "Run the refresh function")
+	flag.Parse()
+	args := flag.Args()
+	var path string
+	if *refreshFlag {
+		if len(args) > 0 {
+			path = args[0]
+		} else {
+			path = filepath.Join(xdg.Home, "timetable.xlsx")
 		}
+		refresh(store, path)
+	} else {
+		if len(args) > 0 {
+			path = args[0]
+		} else {
+			path = filepath.Join(xdg.Home, "input_tt.txt")
+		}
+		find(store, path)
 	}
 }
 
@@ -42,11 +57,11 @@ func logError(err error) {
 	}
 }
 
-func refresh(store sqlite.DBStore) {
+func refresh(store sqlite.DBStore, path string) {
 	err := store.InitDB()
 	logError(err)
 
-	courses, sections := excel.ReadTT("timetable.xlsx")
+	courses, sections := excel.ReadTT(path)
 	err = store.InsertCourses(courses)
 	logError(err)
 
@@ -92,8 +107,8 @@ func (m model) View() string {
 	return docStyle.Render(m.list.View())
 }
 
-func find(store sqlite.DBStore) {
-	file, err := os.Open("input_tt.txt")
+func find(store sqlite.DBStore, path string) {
+	file, err := os.Open(path)
 	logError(err)
 	defer file.Close()
 
