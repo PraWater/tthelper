@@ -23,6 +23,9 @@ func ReadTT(path string) (courses [][]string, sections [][]string) {
 
 	var curCourse string
 	for _, row := range rows {
+    if len(row) <= 6 {
+      continue
+    }
 		if row[courseCode] != "" && len(row) >= 6{
 			curCourse = row[courseCode]
 			courses = append(courses, []string{row[courseCode], row[courseName], row[courseCredits]})

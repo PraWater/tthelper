@@ -134,7 +134,7 @@ func canTakeSections(store sqlite.DBStore, sections []sqlite.Section, filledSlot
 
 		canTake := true
 		for _, time := range times {
-			if filledSlots[time[0]][time[1]] {
+			if filledSlots[time[0]][time[1]-1] {
 				canTake = false
 				break
 			}

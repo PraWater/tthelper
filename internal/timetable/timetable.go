@@ -3,6 +3,7 @@ package timetable
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -61,6 +62,7 @@ func ParseSlot(slot string) (times [][]int, err error) {
         day = 5
       default:
         err = errors.New("Unexpected string for day")
+        fmt.Print("+" + s + "+")
         return
       }
       currentDays = append(currentDays, day)
