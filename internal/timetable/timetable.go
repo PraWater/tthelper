@@ -28,7 +28,11 @@ func ReadFile(file *os.File) (sections [][]string, err error) {
 }
 
 func ParseSlot(slot string) (times [][]int, err error) {
-	splitSlots := strings.Split(slot, " ")
+	sSplit := strings.Split(slot, " ")
+  splitSlots := []string{}
+  for _, sp := range sSplit {
+    splitSlots = append(splitSlots, strings.Split(sp, "\n")...)
+  }
 	previousNum := false
 	currentDays := []int{}
 	for _, splits := range splitSlots {

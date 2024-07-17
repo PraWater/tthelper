@@ -77,7 +77,7 @@ type item struct {
 
 func (i item) Title() string       { return i.title }
 func (i item) Description() string { return i.desc }
-func (i item) FilterValue() string { return i.title }
+func (i item) FilterValue() string { return i.title+i.desc }
 
 type model struct {
 	list list.Model

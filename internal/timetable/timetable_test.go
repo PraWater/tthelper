@@ -55,6 +55,12 @@ func TestParseSlot(t *testing.T) {
 			"T  4 5  S  7 8",
 			[][]int{{1, 4}, {1, 5}, {5, 7}, {5, 8}},
 		},
+    {
+      "Slot with newline character",
+      `T 4 5 S
+      7 8`,
+			[][]int{{1, 4}, {1, 5}, {5, 7}, {5, 8}},
+    },
 	}
 	for _, test := range cases {
 		t.Run(test.Name, func(t *testing.T) {
