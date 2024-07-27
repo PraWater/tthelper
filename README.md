@@ -6,10 +6,12 @@
 
 1. **Install Locally**
    ```sh
-   $ go install github.com/PraWater/tthelper
+   $ go install github.com/PraWater/tthelper@latest
    ```
 
 2. **Populate the Database Using an Excel File**
+
+   Download the [excel file](./timetable.xlsx) from this repo. Last updated: *27th July*
 
    Default location for the Excel file is `/home/timetable.xlsx`.
    ```sh
