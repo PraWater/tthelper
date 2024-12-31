@@ -77,7 +77,7 @@ type item struct {
 
 func (i item) Title() string       { return i.title }
 func (i item) Description() string { return i.desc }
-func (i item) FilterValue() string { return i.title+i.desc }
+func (i item) FilterValue() string { return i.title + i.desc }
 
 type model struct {
 	list list.Model
@@ -115,6 +115,9 @@ func find(store sqlite.DBStore, path string) {
 	userSections, err := timetable.ReadFile(file)
 	logError(err)
 
+	midsemSet := make(map[string]bool)
+	compreSet := make(map[string]bool)
+
 	filledSlots := make([][]bool, NoOfDays)
 	for i := range filledSlots {
 		filledSlots[i] = make([]bool, NoOfSlotsPerDay)
@@ -123,6 +126,21 @@ func find(store sqlite.DBStore, path string) {
 	for _, section := range userSections {
 		s, err := sqlite.ParseSection(section)
 		logError(err)
+
+		exams, err := store.FindExams(sqlite.Course{Subject_code: s.Subject_code, Course_code: s.Course_code})
+		logError(err)
+
+		// if midsemSet[exams[0]] {
+		// 	log.Fatal("Conflict of midsems in User's timetable")
+		// } else {
+		midsemSet[exams[0]] = true
+		// }
+
+		// if compreSet[exams[1]] {
+		// 	log.Fatal("Conflict of compres in User's timetable")
+		// } else {
+		compreSet[exams[1]] = true
+		// }
 
 		slot, err := store.FindSlot(s)
 		logError(err)
@@ -148,20 +166,25 @@ func find(store sqlite.DBStore, path string) {
 		go func(course sqlite.Course) {
 			defer wg.Done()
 
-			lSections, err := store.FindSections(course, 0)
+			exams, err := store.FindExams(course)
 			logError(err)
-			takeLec := canTakeSections(store, lSections, filledSlots)
 
-			tSections, err := store.FindSections(course, 1)
-			logError(err)
-			takeTut := canTakeSections(store, tSections, filledSlots)
+			if !midsemSet[exams[0]] && !compreSet[exams[1]] {
+				lSections, err := store.FindSections(course, 0)
+				logError(err)
+				takeLec := canTakeSections(store, lSections, filledSlots)
 
-			pSections, err := store.FindSections(course, 2)
-			logError(err)
-			takePra := canTakeSections(store, pSections, filledSlots)
+				tSections, err := store.FindSections(course, 1)
+				logError(err)
+				takeTut := canTakeSections(store, tSections, filledSlots)
 
-			if takeLec && takeTut && takePra {
-				resultChan <- course
+				pSections, err := store.FindSections(course, 2)
+				logError(err)
+				takePra := canTakeSections(store, pSections, filledSlots)
+
+				if takeLec && takeTut && takePra {
+					resultChan <- course
+				}
 			}
 		}(course)
 	}

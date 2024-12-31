@@ -46,16 +46,16 @@ func run(m *testing.M) (code int, err error) {
 }
 
 func TestInsertCourses(t *testing.T) {
-	courses := [][]string{{"BIO F215", "BIOPHYSICS", "3"}, {"BIO F231", "BIOLOGY PROJECT LAB", "3"}}
+	courses := [][]string{{"BIO F215", "BIOPHYSICS", "3", "16/03 FN1", "18/05 FN"}, {"BIO F231", "BIOLOGY PROJECT LAB", "3", "12/03 AN1", "10/05 FN"}}
 	err := store.InsertCourses(courses)
 	assertNoError(t, err)
 
-	want := sqlite.Course{Subject_code: "BIO", Course_code: "F215", Course_name: "BIOPHYSICS", Credits: 3}
+	want := sqlite.Course{Subject_code: "BIO", Course_code: "F215", Course_name: "BIOPHYSICS", Credits: 3, Course_midsem: "16/03 FN1", Course_compre: "18/05 FN"}
 
 	row := db.QueryRow("SELECT * FROM courses WHERE course_code = ?", want.Course_code)
 
 	got := sqlite.Course{}
-	err = row.Scan(&got.Subject_code, &got.Course_code, &got.Course_name, &got.Credits)
+	err = row.Scan(&got.Subject_code, &got.Course_code, &got.Course_name, &got.Credits, &got.Course_midsem, &got.Course_compre)
 
 	assertNoError(t, err)
 	assertEqualCourse(t, got, want)
@@ -78,9 +78,9 @@ func TestInsertSections(t *testing.T) {
 }
 
 func TestParseCourse(t *testing.T) {
-	course := []string{"BIO F215", "BIOPHYSICS", "3"}
+	course := []string{"BIO F215", "BIOPHYSICS", "3", "16/03 FN1", "18/05 FN"}
 	got, err := sqlite.ParseCourse(course)
-	want := sqlite.Course{Subject_code: "BIO", Course_code: "F215", Course_name: "BIOPHYSICS", Credits: 3}
+	want := sqlite.Course{Subject_code: "BIO", Course_code: "F215", Course_name: "BIOPHYSICS", Credits: 3, Course_midsem: "16/03 FN1", Course_compre: "18/05 FN"}
 
 	assertNoError(t, err)
 	assertEqualCourse(t, got, want)
@@ -110,6 +110,17 @@ func TestFindSections(t *testing.T) {
 	course := sqlite.Course{Subject_code: "BIO", Course_code: "F215", Course_name: "BIOPHYSICS", Credits: 3}
 	got, err := store.FindSections(course, 0)
 	want := []sqlite.Section{{Subject_code: "BIO", Course_code: "F215", Section_type: 0, Section_no: 1, Section_slot: "M W F  5"}}
+
+	assertNoError(t, err)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestFindExams(t *testing.T) {
+  course := sqlite.Course{Subject_code: "BIO", Course_code: "F215"}
+  got, err := store.FindExams(course)
+  want := []string{"16/03 FN1", "18/05 FN"}
 
 	assertNoError(t, err)
 	if !reflect.DeepEqual(got, want) {

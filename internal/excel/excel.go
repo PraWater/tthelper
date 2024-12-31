@@ -11,6 +11,8 @@ const (
 	courseCredits = 5
 	sectionCode   = 6
 	sectionSlot   = 9
+	courseMidsem  = 10
+	courseCompre  = 11
 )
 
 func ReadTT(path string) (courses [][]string, sections [][]string) {
@@ -23,12 +25,16 @@ func ReadTT(path string) (courses [][]string, sections [][]string) {
 
 	var curCourse string
 	for _, row := range rows {
-    if len(row) <= 6 {
-      continue
-    }
-		if row[courseCode] != "" && len(row) >= 6{
+		if len(row) <= 6 {
+			continue
+		}
+		if row[courseCode] != "" && len(row) >= 6 {
 			curCourse = row[courseCode]
-			courses = append(courses, []string{row[courseCode], row[courseName], row[courseCredits]})
+      if len(row) >= 12 {
+			  courses = append(courses, []string{row[courseCode], row[courseName], row[courseCredits], row[courseMidsem], row[courseCompre]})
+      } else {
+			  courses = append(courses, []string{row[courseCode], row[courseName], row[courseCredits], "", ""})
+      }
 		}
 		if row[sectionCode] != "" && len(row) >= 10 {
 			sections = append(sections, []string{curCourse, row[sectionCode], row[sectionSlot]})

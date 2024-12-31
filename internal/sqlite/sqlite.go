@@ -17,8 +17,8 @@ type Subject struct {
 }
 
 type Course struct {
-	Subject_code, Course_code, Course_name string
-	Credits                                int
+	Subject_code, Course_code, Course_name, Course_midsem, Course_compre string
+	Credits                                                              int
 }
 
 type Section struct {
@@ -59,6 +59,8 @@ func (store *DBStore) InitDB() error {
         course_code TEXT NOT NULL,
         course_name TEXT,
         credits INTEGER,
+        course_midsem TEXT,
+        course_compre TEXT,
         PRIMARY KEY (subject_code, course_code),
         FOREIGN KEY (subject_code) REFERENCES subjects(subject_code)
     )`)
@@ -88,71 +90,71 @@ func (store *DBStore) InitDB() error {
 }
 
 func (store *DBStore) InsertCourses(courses [][]string) error {
-    type parseResult struct {
-        course Course
-        err    error
-    }
+	type parseResult struct {
+		course Course
+		err    error
+	}
 
-    results := make(chan parseResult, len(courses))
-    sem := make(chan struct{}, 20)
+	results := make(chan parseResult, len(courses))
+	sem := make(chan struct{}, 20)
 
-    for _, course := range courses {
-        sem <- struct{}{}
-        go func(course []string) {
-            defer func() { <-sem }()
-            c, err := ParseCourse(course)
-            results <- parseResult{c, err}
-        }(course)
-    }
+	for _, course := range courses {
+		sem <- struct{}{}
+		go func(course []string) {
+			defer func() { <-sem }()
+			c, err := ParseCourse(course)
+			results <- parseResult{c, err}
+		}(course)
+	}
 
-    for range courses {
-        result := <-results
-        if result.err != nil {
-            continue
-        }
-        _, err := store.db.Exec("INSERT INTO courses (subject_code, course_code, course_name, credits) VALUES (?, ?, ?, ?)", 
-            result.course.Subject_code, result.course.Course_code, result.course.Course_name, result.course.Credits)
-        if err != nil {
-            return err
-        }
-    }
+	for range courses {
+		result := <-results
+		if result.err != nil {
+			continue
+		}
+		_, err := store.db.Exec("INSERT INTO courses (subject_code, course_code, course_name, credits, course_midsem, course_compre) VALUES (?, ?, ?, ?, ?, ?)",
+			result.course.Subject_code, result.course.Course_code, result.course.Course_name, result.course.Credits, result.course.Course_midsem, result.course.Course_compre)
+		if err != nil {
+			return err
+		}
+	}
 
-    return nil
+	return nil
 }
 
 func (store *DBStore) InsertSections(sections [][]string) error {
-    type parseResult struct {
-        section Section
-        err     error
-        valid   bool
-    }
+	type parseResult struct {
+		section Section
+		err     error
+		valid   bool
+	}
 
-    results := make(chan parseResult, len(sections))
-    sem := make(chan struct{}, 20)
+	results := make(chan parseResult, len(sections))
+	sem := make(chan struct{}, 20)
 
-    for _, section := range sections {
-        sem <- struct{}{}
-        go func(section []string) {
-            defer func() { <-sem }()
-            s, err := ParseSection(section)
-            valid := err == nil && s.Section_type >= 0
-            results <- parseResult{s, err, valid}
-        }(section)
-    }
+	for _, section := range sections {
+		sem <- struct{}{}
+		go func(section []string) {
+			defer func() { <-sem }()
+			s, err := ParseSection(section)
+			valid := err == nil && s.Section_type >= 0
+			results <- parseResult{s, err, valid}
+		}(section)
+	}
 
-    for range sections {
-        result := <-results
-        if !result.valid {
-            continue
-        }
-        _, err := store.db.Exec("INSERT INTO sections (subject_code, course_code, section_type, section_no, section_slot) VALUES (?, ?, ?, ?, ?)", 
-            result.section.Subject_code, result.section.Course_code, result.section.Section_type, result.section.Section_no, result.section.Section_slot)
-        if err != nil {
-            return err
-        }
-    }
+	for range sections {
+		result := <-results
+		if !result.valid {
+			continue
+		}
+		_, err := store.db.Exec("INSERT INTO sections (subject_code, course_code, section_type, section_no, section_slot) VALUES (?, ?, ?, ?, ?)",
+			result.section.Subject_code, result.section.Course_code, result.section.Section_type, result.section.Section_no, result.section.Section_slot)
+		if err != nil {
+			return err
+		}
+	}
 
-    return nil
+	return nil
 }
 
 func ParseCourse(course []string) (Course, error) {
@@ -162,8 +164,10 @@ func ParseCourse(course []string) (Course, error) {
 	if err != nil {
 		return Course{}, err
 	}
+	courseMidsem := course[3]
+	courseCompre := course[4]
 
-	return Course{Subject_code: codes[0], Course_code: codes[1], Course_name: courseName, Credits: credits}, nil
+	return Course{Subject_code: codes[0], Course_code: codes[1], Course_name: courseName, Credits: credits, Course_midsem: courseMidsem, Course_compre: courseCompre}, nil
 }
 
 func ParseSection(section []string) (Section, error) {
@@ -242,7 +246,7 @@ func (store *DBStore) AllCourses() (courses []Course, err error) {
 
 	for rows.Next() {
 		c := Course{}
-		err = rows.Scan(&c.Subject_code, &c.Course_code, &c.Course_name, &c.Credits)
+		err = rows.Scan(&c.Subject_code, &c.Course_code, &c.Course_name, &c.Credits, &c.Course_midsem, &c.Course_compre)
 
 		if err != nil {
 			return
@@ -257,4 +261,11 @@ func (store *DBStore) AllCourses() (courses []Course, err error) {
 	}
 
 	return
+}
+
+func (store *DBStore) FindExams(course Course) (exams []string, err error) {
+	row := store.db.QueryRow("SELECT course_midsem, course_compre FROM courses WHERE subject_code = ? AND course_code = ?", course.Subject_code, course.Course_code)
+  exams = make([]string, 2)
+  err = row.Scan(&exams[0], &exams[1])
+  return 
 }
