@@ -11,7 +11,7 @@
 
 2. **Populate the database using an excel file**
 
-   Download the [excel file](./timetable.xlsx) from this repo. Last updated: *27th Dec*
+   Download the [excel file](./timetable.xlsx) from this repo. Last updated: *10th Dec*
 
    Default location for the Excel file is `/home/timetable.xlsx`.
    ```bash

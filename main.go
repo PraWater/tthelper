@@ -166,26 +166,29 @@ func find(store sqlite.DBStore, path string) {
 		go func(course sqlite.Course) {
 			defer wg.Done()
 
-			exams, err := store.FindExams(course)
-			logError(err)
-
-			if !midsemSet[exams[0]] && !compreSet[exams[1]] {
-				lSections, err := store.FindSections(course, 0)
+			if course.Course_code != "F266" && course.Course_code != "F366" && course.Course_code != "F367" && course.Course_code != "F376" && course.Course_code != "F377" && course.Course_code != "F491" {
+				exams, err := store.FindExams(course)
 				logError(err)
-				takeLec := canTakeSections(store, lSections, filledSlots)
 
-				tSections, err := store.FindSections(course, 1)
-				logError(err)
-				takeTut := canTakeSections(store, tSections, filledSlots)
+				if !midsemSet[exams[0]] && !compreSet[exams[1]] {
+					lSections, err := store.FindSections(course, 0)
+					logError(err)
+					takeLec := canTakeSections(store, lSections, filledSlots)
 
-				pSections, err := store.FindSections(course, 2)
-				logError(err)
-				takePra := canTakeSections(store, pSections, filledSlots)
+					tSections, err := store.FindSections(course, 1)
+					logError(err)
+					takeTut := canTakeSections(store, tSections, filledSlots)
 
-				if takeLec && takeTut && takePra {
-					resultChan <- course
+					pSections, err := store.FindSections(course, 2)
+					logError(err)
+					takePra := canTakeSections(store, pSections, filledSlots)
+
+					if takeLec && takeTut && takePra {
+						resultChan <- course
+					}
 				}
 			}
+
 		}(course)
 	}
 
